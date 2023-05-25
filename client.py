@@ -1,64 +1,76 @@
-import socket
+from socket_protocol import *
 
-# Create a socket object using DGRAM
-s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-# Get local machine name
-host = socket.gethostname()
-
-# Bastao
-bastao = 0
-
-# Open config file
-config = open("config", "r")
-
-# From config file read lines until you find the host name then keep info from that line
-for line in config:
-    if line.startswith(host):
-        line = line.split()
-        port = int(line[1])
-        tHost = line[2]
-        tPort = int(line[3])
-
-address = (host, port) # self address
-tAddress = (tHost, tPort) # target address
-
-# bind address to socket
-s.bind(address)
-
-# transform the string into bytes
-if host == "h13":
-    bastao = 1
-
-while(1):
-    if bastao == 1:
-        msg = input("Voce possui o bastao, envie a mensagem: ")
-        encoded_msg = msg.encode('ascii')
-        s.sendto(encoded_msg, tAddress)
-        data, addr = s.recvfrom(1024)
-        received_msg = data.decode('ascii')
-        # Check if first 2 letters are pb
-        if received_msg[:2] == "pb":
-            # If size is 14
-            if len(received_msg) == 14:
-                bastao = 0
-        elif msg == received_msg:
-            print("Mensagem deu a volta: " + received_msg)
+def main():
+    # Baton starts as 0
+    baton = 0
+    # Card Dealer starts as 0
+    card_dealer = 0
+    host, port = get_host_and_port()
+    # Target host and port
+    tHost = host
+    tPort = port
+    # Prepare tokenring
+    tr = prepare_tokenring("config.delta", host, port)
+    # Get socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    # Bind address to socket
+    s.bind((host, port))
+    # Wait for tokenring to be ready
+    if is_first_in_tr(host, tr):
+        baton = 1
+        card_dealer = 1
+        while True:
+            start = input("Digite sim, quando todos estiverem conectados: ")
+            if start == "sim":
+                send_update_to_hosts("config.delta", s, host, port)
+                tr = update_tokenring("config.delta")
+                break
     else:
-        data, addr = s.recvfrom(1024)
-        received_msg = data.decode('ascii')
-        # Check if first 2 letters are pb
-        if received_msg[:2] == "pb":
-            # If size is 2, get bastao
-            if len(received_msg) == 2:
-                bastao = 1
-            # Concatenate the message with the hostanem at the end
-            received_msg = received_msg + "_" + host
-            data = received_msg.encode('ascii')
-        else:
-            print("Recebi uma mensagem: " + received_msg)
-        # Recebeu a mensagem, passe a mensagem adiante
-        s.sendto(data, tAddress)
+        while True:
+            data, addr = s.recvfrom(1024)
+            received_msg = data.decode('ascii')
+            msg_arr = received_msg.split("_")
+            if msg_arr[0] == "#":
+                if msg_arr[2] == "updatetr":
+                    tr = update_tokenring("config.delta")
+                    break
 
-# Close the socket
-s.close()
+    # Adjust tHost and tPort
+    tHost, tPort = get_next_host_and_port(host, tr)
+    print("tHost: " + tHost + " tPort: " + tPort)
+    # While True
+    while True:
+        # If baton is 1, send message
+        if baton == 1:
+            # Get message
+            msg = input("Voce possui o bastao, envie a mensagem: ")
+            packet_msg = "#" + "_" + host + "_" + msg +"_" + str(1) + "_" + "@"
+            # Send message
+            s.sendto(packet_msg.encode('ascii'), (tHost, int(tPort)))
+            # Receive message
+            data, addr = s.recvfrom(1024)
+            received_msg = data.decode('ascii')
+            # Get host message and number in message splitting _
+            msg_arr = received_msg.split("_")
+            if msg_arr[0] == "#":
+                if msg_arr[3] == str(len(tr)):
+                    print("Deu a volta!")
+            # print message
+            print(msg_arr)
+        else:
+            # Receive message
+            data, addr = s.recvfrom(1024)
+            received_msg = data.decode('ascii')
+            # Get host message and number in message splitting _
+            msg_arr = received_msg.split("_")
+            # If host is the Original sender
+            if msg_arr[0] == "#":
+                print(msg_arr)
+                msg_arr[3] = str(int(msg_arr[3]) + 1)
+                # Make message array intoa again
+                msg_arr = "_".join(msg_arr)
+                packet_msg = msg_arr
+                # Send message
+                s.sendto(packet_msg.encode('ascii'), (tHost, int(tPort)))
+
+main()

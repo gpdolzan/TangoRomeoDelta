@@ -33,7 +33,7 @@ def add_host_and_port(host, port, dict):
     # dict can't have more than 8 hosts
     if len(dict) == 8:
         print("Tokenring is full")
-        return
+        exit()
     dict[host] = port
     return dict
 
@@ -62,6 +62,54 @@ def write_config_file(filename, file_dict):
             f.write(key + " " + str(value) + "\n")
         f.close()
 
+# Prepare token ring
+def prepare_tokenring(filename, host, port):
+    # Read config.delta
+    tokenring = read_config_file(filename)
+    # tokenring can't have more than 8 hosts
+    add_host_and_port(host, port, tokenring)
+    # Write host and port to config.delta
+    write_config_file(filename, tokenring)
+    return tokenring
+
+# Update tokenring for current host
+def update_tokenring(filename):
+    # Read config.delta
+    tokenring = read_config_file(filename)
+    return tokenring
+
+# Check if host is the first in tokenring
+def is_first_in_tr(host, tokenring):
+    # Check if host is the first in tokenring
+    if host == list(tokenring.keys())[0]:
+        return True
+    return False
+
+def create_message(message, host, confirmation):
+    # Create message
+    message = "#" + "_" + host + "_" + message + "_" + str(confirmation) + "_" + "@"
+    return message
+
+def send_update_to_hosts(filename, socket, cHost, cPort):
+    # Read config.delta
+    tokenring = read_config_file(filename)
+    # for each host in tokenring
+    for host, port in tokenring.items():
+        # except current host and port
+        if host != cHost and port != cPort:
+            # Send update to host
+            socket.sendto(create_message("updatetr", cHost, 0).encode(), (host, int(port)))
+
+def get_next_host_and_port(host, tr):
+    # Get index of host in tokenring
+    index = list(tr.keys()).index(host)
+    # Check if host is the last in tokenring
+    if index == len(tr) - 1:
+        # Return first host and port
+        return list(tr.keys())[0], list(tr.values())[0]
+    # Return next host and port
+    return list(tr.keys())[index + 1], list(tr.values())[index + 1]
+
 # Message protocol: MI / Origin / Message / Confirmation / ME
 # MI: Message Init
 # Origin: Hostname
@@ -69,41 +117,3 @@ def write_config_file(filename, file_dict):
 # Confirmation: 0 or 1
 # ME: Message End
 # Example: "[#][hostname][Message][0 to number of hosts in tokenring][@]"
-
-def main():
-    # Baton starts as 0
-    baton = 0
-    # Get host and port
-    tokenring = read_config_file("config.delta")
-    # tokenring can't have more than 8 hosts
-    host, port = get_host_and_port()
-    add_host_and_port(host, port, tokenring)
-    # Write host and port to config.delta
-    write_config_file("config.delta", tokenring)
-    # If host is the first host in tokenring he has the baton
-    if host == list(tokenring.keys())[0]:
-        baton = 1
-    # Create socket
-    s = get_socket()
-    # Bind address to socket
-    s.bind((host, port))
-    # While True
-    while True:
-        # If baton is 1, send message
-        if baton == 1:
-            # Get message
-            msg = input("Voce possui o bastao, envie a mensagem: ")
-            packet_msg = "#" + "_" + host + "_" + msg +"_" + str(1) + "_" + "@"
-            # Send message
-            s.sendto(packet_msg.encode('ascii'), (host, port))
-            # Receive message
-            data, addr = s.recvfrom(1024)
-            received_msg = data.decode('ascii')
-            # Get host message and number in message splitting _
-            msg_arr = received_msg.split("_")
-            if(msg_arr[3] == str(len(tokenring))):
-                print("Deu a volta!")
-            # print message
-            print(msg_arr)
-
-main()
