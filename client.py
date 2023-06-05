@@ -1,6 +1,8 @@
 from socket_protocol import *
 
 def main():
+    # number of players
+    player_count = 0
     # Baton starts as 0
     baton = 0
     # Card Dealer starts as 0
