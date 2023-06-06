@@ -125,6 +125,8 @@ def get_next_host_and_port(host, tr):
     return list(tr.keys())[index + 1], list(tr.values())[index + 1]
 
 def initiate_tokenring():
+    baton = 0
+    card_dealer = 0
     host, port = get_host_and_port()
     # Prepare tokenring
     tr = prepare_tokenring("config.delta", host, port)

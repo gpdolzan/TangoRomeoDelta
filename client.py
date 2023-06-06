@@ -10,8 +10,6 @@ def read_command(command):
             player_cards.append(cards[int(command[i]) - 1])
 
 def main():
-    baton = 0
-    card_dealer = 0
     tHost, tPort, s, tr, baton, card_dealer = initiate_tokenring()
     host_list = get_host_list(tr)
 
