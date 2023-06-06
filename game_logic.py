@@ -22,16 +22,40 @@ players = {
     "Lesser Peon": [],
     "Greater Peon": [],
 }
+    
 
-""" if player_count >= 4 and player_count <= 8: """
+def get_card_index(cards, value):
+    for i, card in enumerate(cards):
+        if card[1] == value:
+            return i
+    return -1  # Return -1 if the card with the specified value is not found
 
-# Revolution check: if player has two jesters, they can start a revolution
-def revolution_check(players):
-    for player, cards in players.items():
-        if cards.count("Jester (alone)") == 2:
-            return True
-        else:
-            return False
+
+def exchange_cards(players):
+    # Greater Peon and Lesser Peon exchange their highest cards with the Greater Dalmuti and Lesser Dalmuti respectively
+    players["Greater Dalmuti"].append(players["Greater Peon"].pop(0))
+    players["Greater Dalmuti"].append(players["Greater Peon"].pop(0))
+    players["Lesser Dalmuti"].append(players["Lesser Peon"].pop(0))
+
+    # Greater Peon and Lesser Peon exchange the cards they want with the Lesser Dalmuti and Greater Dalmuti respectively
+    print("Greater Dalmuti, which cards do you want to exchange? Enter the card values.")
+    card1 = int(input())
+    card2 = int(input())
+    players["Greater Peon"].append(players["Greater Dalmuti"].pop(get_card_index(players["Greater Dalmuti"], card1)))
+    players["Greater Peon"].append(players["Greater Dalmuti"].pop(get_card_index(players["Greater Dalmuti"], card2)))
+
+    print("Lesser Dalmuti, which cards do you want to exchange? Enter the card values.")
+    card3 = int(input())
+    players["Lesser Peon"].append(players["Lesser Dalmuti"].pop(get_card_index(players["Lesser Dalmuti"], card3)))
+
+# function to check if the game has a possible revolution
+def check_revolution(players):
+    jester_count = 0
+    for player, hand in players.items():
+        if hand.count(("Jester (alone)", 13)) == 2:
+            jester_count += 1
+            print(f"{player} has two Jesters and can start a Revolution! A Revolution means that no one has to exchange cards before the game starts.")
+            return player
 
 deck = []
 for card, count in cards.items():
@@ -61,9 +85,10 @@ for card in deck:
     players[player].append(card)  # Assign the card to the player
     card_index += 1  # Increment the card index
 
-for player, cards in players.items():
-    # Sort the cards in each player's hand
-    players[player] = sorted(cards, key=lambda x: x[1], reverse=False)
+def order_cards(players):
+    for player, cards in players.items():
+        # Sort the cards in each player's hand
+        players[player] = sorted(cards, key=lambda x: x[1], reverse=False)
 
 # Print the cards assigned to each player
 
@@ -72,7 +97,7 @@ def print_cards(players):
         print(f"Number of cards: {len(cards)}")
         print(f"{player}: {cards}")
 
-if revolution_check(players):
-    print("Revolution!")
-
 print_cards(players)
+exchange_cards(players)
+print_cards(players)
+# check_revolution(players)
