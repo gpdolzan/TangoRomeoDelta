@@ -51,7 +51,8 @@ def main():
         if(exec == True):
             print("Lendo o comando!")
             read_command(command)
-        new_msg = create_message(msg_arr[2], msg_arr[1], str(int(msg_arr[3] + 1)))
+        
+        new_msg = create_message(msg_arr[2], msg_arr[1], int(msg_arr[3]) + 1)
         # envia mensagem
         s.sendto(new_msg.encode('ascii'), (tHost, int(tPort)))
         
