@@ -148,6 +148,7 @@ def initiate_tokenring():
         while True:
             data, addr = s.recvfrom(1024)
             received_msg = data.decode('ascii')
+            print(received_msg)
             msg_arr = received_msg.split("_")
             if msg_arr[0] == "#":
                 if msg_arr[2] == "updatetr":
