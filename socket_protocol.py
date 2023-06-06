@@ -148,7 +148,6 @@ def initiate_tokenring():
         while True:
             data, addr = s.recvfrom(1024)
             received_msg = data.decode('ascii')
-            print(received_msg)
             msg_arr = received_msg.split("_")
             if msg_arr[0] == "#":
                 if msg_arr[2] == "updatetr":
@@ -156,6 +155,7 @@ def initiate_tokenring():
                     break
     # Adjust tHost and tPort
     tHost, tPort = get_next_host_and_port(host, tr)
+    print(tHost + " e " + tPort)
     return tHost, tPort, s, tr, baton, card_dealer
 
 def get_host_list(tokenring):
