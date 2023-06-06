@@ -42,18 +42,18 @@ def main():
             if(received_msg[1] == get_hostname()):
                 print("Mensagem deu a volta!")
             gd_pos += 1
-        else: # Se nao for card dealer
-            # Receive message
-            data, addr = s.recvfrom(1024)
-            msg = data.decode('ascii')
-            print(msg)
-            exec, command, msg_arr = read_message(msg)
-            if(exec == True):
-                print("Lendo o comando!")
-                read_command(command)
-            new_msg = create_message(msg_arr[2], msg_arr[1], str(int(msg_arr[3] + 1)))
-            # envia mensagem
-            s.sendto(new_msg.encode('ascii'), (tHost, int(tPort)))
+    else: # Se nao for card dealer
+        # Receive message
+        data, addr = s.recvfrom(1024)
+        msg = data.decode('ascii')
+        print(msg)
+        exec, command, msg_arr = read_message(msg)
+        if(exec == True):
+            print("Lendo o comando!")
+            read_command(command)
+        new_msg = create_message(msg_arr[2], msg_arr[1], str(int(msg_arr[3] + 1)))
+        # envia mensagem
+        s.sendto(new_msg.encode('ascii'), (tHost, int(tPort)))
         
     print(player_cards)
     # While True
