@@ -40,20 +40,20 @@ def main():
             data, addr = s.recvfrom(1024)
             received_msg = data.decode('ascii')
             exec, command, msg_arr = read_message(received_msg)
-            if(int(msg_arr[3]) == (len(tr) - 1)):
+            if(int(msg_arr[3]) == len(tr)):
                 print("Mensagem deu a volta!")
             gd_pos += 1
     else: # Se nao for card dealer
         # Receive message
         data, addr = s.recvfrom(1024)
         msg = data.decode('ascii')
-        print(msg)
         exec, command, msg_arr = read_message(msg)
         if(exec == True):
             print("Lendo o comando!")
             read_command(command)
         
         new_msg = create_message(msg_arr[2], msg_arr[1], int(msg_arr[3]) + 1)
+        print(new_msg)
         # envia mensagem
         s.sendto(new_msg.encode('ascii'), (tHost, int(tPort)))
         
