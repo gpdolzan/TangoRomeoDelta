@@ -49,6 +49,7 @@ def main():
             print(msg)
             exec, command, msg_arr = read_message(msg)
             if(exec == True):
+                print("Lendo o comando!")
                 read_command(command)
             new_msg = create_message(msg_arr[2], msg_arr[1], str(int(msg_arr[3] + 1)))
             # envia mensagem

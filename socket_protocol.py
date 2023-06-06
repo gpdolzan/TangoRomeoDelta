@@ -155,7 +155,6 @@ def initiate_tokenring():
                     break
     # Adjust tHost and tPort
     tHost, tPort = get_next_host_and_port(host, tr)
-    print(tHost + " e " + tPort)
     return tHost, tPort, s, tr, baton, card_dealer
 
 def get_host_list(tokenring):
