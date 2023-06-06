@@ -39,7 +39,8 @@ def main():
             # Listen to message
             data, addr = s.recvfrom(1024)
             received_msg = data.decode('ascii')
-            if(received_msg[1] == get_hostname()):
+            exec, command, msg_arr = read_message(received_msg)
+            if(int(msg_arr[3]) == (len(tr) - 1)):
                 print("Mensagem deu a volta!")
             gd_pos += 1
     else: # Se nao for card dealer
