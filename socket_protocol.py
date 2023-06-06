@@ -5,9 +5,12 @@ import random
 def get_socket():
     return socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
+def get_hostname():
+    return socket.gethostname()
+
 # Get local machine name and get random port number
 def get_host_and_port():
-    host = socket.gethostname()
+    host = get_hostname()
     # Get random port number from 1024 to 65535
     port = random.randint(1024, 65535)
     # Return host and port as dict key and value
@@ -90,6 +93,17 @@ def create_message(message, host, confirmation):
     message = "#" + "_" + host + "_" + message + "_" + str(confirmation) + "_" + "@"
     return message
 
+def read_message(message):
+    # Split message by _
+    message_arr = message.split("_")
+    print(message_arr)
+    # Get message and split with :
+    command = message_arr[2].split(":")
+    # If host is the same as target host
+    if(command[0] == get_hostname()):
+        return True, command, message_arr
+    return False, command, message_arr
+
 def send_update_to_hosts(filename, socket, cHost, cPort):
     # Read config.delta
     tokenring = read_config_file(filename)
@@ -110,10 +124,49 @@ def get_next_host_and_port(host, tr):
     # Return next host and port
     return list(tr.keys())[index + 1], list(tr.values())[index + 1]
 
+def initiate_tokenring():
+    host, port = get_host_and_port()
+    # Prepare tokenring
+    tr = prepare_tokenring("config.delta", host, port)
+    # Get socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    # Bind address to socket
+    s.bind((host, port))
+    # Wait for tokenring to be ready
+    if is_first_in_tr(host, tr):
+        baton = 1
+        card_dealer = 1
+        while True:
+            start = input("Digite sim, quando todos estiverem conectados: ")
+            if start == "sim":
+                send_update_to_hosts("config.delta", s, host, port)
+                tr = update_tokenring("config.delta")
+                break
+    else:
+        while True:
+            data, addr = s.recvfrom(1024)
+            received_msg = data.decode('ascii')
+            msg_arr = received_msg.split("_")
+            if msg_arr[0] == "#":
+                if msg_arr[2] == "updatetr":
+                    tr = update_tokenring("config.delta")
+                    break
+    # Adjust tHost and tPort
+    tHost, tPort = get_next_host_and_port(host, tr)
+    return tHost, tPort, s, tr, baton, card_dealer
+
+def get_host_list(tokenring):
+    host_list = []
+    for host in tokenring.keys():
+        host_list.append(host)
+    return host_list
+    
+
 # Message protocol: MI / Origin / Message / Confirmation / ME
 # MI: Message Init
 # Origin: Hostname
 # Message: Message
-# Confirmation: 0 or 1
+# Confirmation: 1 ~ total number of players
 # ME: Message End
-# Example: "[#][hostname][Message][0 to number of hosts in tokenring][@]"
+# Example: "[#][hostname][Message][1 to number of hosts in tokenring][@]"
+# Taxation: "[#][hostname][receive:12:10:1]"
