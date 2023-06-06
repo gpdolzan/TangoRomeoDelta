@@ -34,7 +34,7 @@ def main():
             # Remove first hand from player_hands
             player_hands.pop(0)
             # Send message
-            s.sendto(create_message(msg, get_hostname(), 0).encode('ascii'), (tHost, int(tPort)))
+            s.sendto(create_message(msg, get_hostname(), 1).encode('ascii'), (tHost, int(tPort)))
 
             # Listen to message
             data, addr = s.recvfrom(1024)
