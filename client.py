@@ -4,10 +4,16 @@ from game_logic import *
 player_cards = []
 
 def read_command(command):
-    if command[0] == "receive":
-        # Read all cards and append as cards object in player_cards
-        for i in range(1, len(command)):
-            player_cards.append(cards[int(command[i]) - 1])
+    if command[0] == "endreceive":
+        return "break"
+    elif command[1] == "receive":
+        # Fill player_cards with cards from command
+        num = len(command)
+        # Do a loop that gets number from command and append card to player_cards from cards
+        for i in range(2, num):
+            # Append card to player_cards
+            player_cards.append(int(command[i]))
+        return "receive"
 
 def main():
     tHost, tPort, s, tr, baton, card_dealer = initiate_tokenring()
@@ -22,17 +28,16 @@ def main():
         player_hands = deal_cards(num_players, deck)
         # Define GD
         gd_pos = random.randint(0, num_players - 1)
-        while gd_pos <= num_players - 1:
-            # First hand will be sent to GD
-            gd_hand = player_hands[0]
-            # Percorre gd_hand
-            msg = host_list[gd_pos]
+
+        # Percorre host_list
+        for h in host_list:
+            msg = h
             msg += ":receive"
-            for card in gd_hand:
+            # pop first player_hand
+            hand = player_hands.pop(0)
+            for card in hand:
                 # Append number
                 msg += ":" + str(card[1])
-            # Remove first hand from player_hands
-            player_hands.pop(0)
             # Send message
             s.sendto(create_message(msg, get_hostname(), 1).encode('ascii'), (tHost, int(tPort)))
 
@@ -40,24 +45,44 @@ def main():
             data, addr = s.recvfrom(1024)
             received_msg = data.decode('ascii')
             exec, command, msg_arr = read_message(received_msg)
-            if(int(msg_arr[3]) == len(tr)):
-                print("Mensagem deu a volta!")
-            gd_pos += 1
-    else: # Se nao for card dealer
-        # Receive message
+            if(int(msg_arr[3]) != len(tr)):
+                print("Anel esta configurado errado!")
+                exit(1)
+            if(exec == True):
+                cmd = read_command(command)
+
+        msg = "endreceive"
+        packed = create_message(msg, get_hostname(), 1).encode('ascii')
+        s.sendto(packed, (tHost, int(tPort)))
+        # Listen to message
         data, addr = s.recvfrom(1024)
-        msg = data.decode('ascii')
-        exec, command, msg_arr = read_message(msg)
+        received_msg = data.decode('ascii')
+        exec, command, msg_arr = read_message(received_msg)
+        if(int(msg_arr[3]) != len(tr)):
+            print("Anel esta configurado errado!")
+            exit(1)
         if(exec == True):
-            print("Lendo o comando!")
-            read_command(command)
-        
-        new_msg = create_message(msg_arr[2], msg_arr[1], int(msg_arr[3]) + 1)
-        print(new_msg)
-        # envia mensagem
-        s.sendto(new_msg.encode('ascii'), (tHost, int(tPort)))
+            cmd = read_command(command)
+    else: # Se nao for card dealer
+        while True:
+            # Receive message
+            data, addr = s.recvfrom(1024)
+            msg = data.decode('ascii')
+            exec, command, msg_arr = read_message(msg)
+            if(exec == True):
+                cmd = read_command(command)
+                # envia mensagem
+                new_msg = create_message(msg_arr[2], msg_arr[1], int(msg_arr[3]) + 1)
+                s.sendto(new_msg.encode('ascii'), (tHost, int(tPort)))
+                if(cmd == "break"):
+                    break
+            else:
+                new_msg = create_message(msg_arr[2], msg_arr[1], int(msg_arr[3]) + 1)
+                # envia mensagem
+                s.sendto(new_msg.encode('ascii'), (tHost, int(tPort)))
         
     print(player_cards)
+
     # While True
     #while True:
         # If baton is 1, send message

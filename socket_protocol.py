@@ -96,11 +96,12 @@ def create_message(message, host, confirmation):
 def read_message(message):
     # Split message by _
     message_arr = message.split("_")
-    print(message_arr)
     # Get message and split with :
     command = message_arr[2].split(":")
     # If host is the same as target host
     if(command[0] == get_hostname()):
+        return True, command, message_arr
+    elif(command[0] == "endreceive"):
         return True, command, message_arr
     return False, command, message_arr
 
