@@ -46,6 +46,7 @@ def main():
             # Receive message
             data, addr = s.recvfrom(1024)
             msg = data.decode('ascii')
+            print(msg)
             exec, command, msg_arr = read_message(msg)
             if(exec == True):
                 read_command(command)
