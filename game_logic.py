@@ -1,5 +1,7 @@
 import random
 
+player_cards = []
+
 cards = {
     "Jester (alone)": 13,
     "Peasants": 12,

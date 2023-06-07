@@ -1,5 +1,7 @@
 import socket
 import random
+from game_logic import *
+from game_logic import player_cards
 
 # Create a UDP socket DATAGRAM
 def get_socket():
@@ -9,12 +11,10 @@ def get_hostname():
     return socket.gethostname()
 
 # Get local machine name and get random port number
-def get_host_and_port():
+def get_host():
     host = get_hostname()
-    # Get random port number from 1024 to 65535
-    port = random.randint(1024, 65535)
     # Return host and port as dict key and value
-    return host, port
+    return host
 
 # Check if a file exists
 def file_exists(filename):
@@ -23,13 +23,8 @@ def file_exists(filename):
         f.close()
         return True
     except FileNotFoundError:
-        return False
-    
-# Create a file if it does not exist
-def create_file(filename):
-    if file_exists(filename) == False:
-        f = open(filename, "w")
-        f.close()
+        print("File does not exist, aborting")
+        exit(1)
 
 # Add host and port to tokenring
 def add_host_and_port(host, port, dict):
@@ -42,51 +37,23 @@ def add_host_and_port(host, port, dict):
 
 # Read config.delta
 def read_config_file(filename):
-    create_file(filename)
+    file_exists(filename)
     f = open(filename, "r")
     # Read all lines and create dict with key and value
     file_dict = {}
     for line in f:
         line = line.strip()
         if line != "":
-            key, value = line.split(" ")
-            file_dict[key] = value
+            host, port, rank = line.split(" ")
+            file_dict[host] = (port, rank)
     f.close()
     return file_dict
 
-# Write to config.delta
-def write_config_file(filename, file_dict):
-    create_file(filename)
-    f = open(filename, "w")
-    # Check if f has no content
-    if f.tell() == 0:
-        # Write key and value to f
-        for key, value in file_dict.items():
-            f.write(key + " " + str(value) + "\n")
-        f.close()
-
 # Prepare token ring
-def prepare_tokenring(filename, host, port):
-    # Read config.delta
-    tokenring = read_config_file(filename)
-    # tokenring can't have more than 8 hosts
-    add_host_and_port(host, port, tokenring)
-    # Write host and port to config.delta
-    write_config_file(filename, tokenring)
-    return tokenring
-
-# Update tokenring for current host
-def update_tokenring(filename):
+def get_tokenring(filename):
     # Read config.delta
     tokenring = read_config_file(filename)
     return tokenring
-
-# Check if host is the first in tokenring
-def is_first_in_tr(host, tokenring):
-    # Check if host is the first in tokenring
-    if host == list(tokenring.keys())[0]:
-        return True
-    return False
 
 def create_message(message, host, confirmation):
     # Create message
@@ -105,15 +72,11 @@ def read_message(message):
         return True, command, message_arr
     return False, command, message_arr
 
-def send_update_to_hosts(filename, socket, cHost, cPort):
-    # Read config.delta
-    tokenring = read_config_file(filename)
-    # for each host in tokenring
-    for host, port in tokenring.items():
-        # except current host and port
-        if host != cHost and port != cPort:
-            # Send update to host
-            socket.sendto(create_message("updatetr", cHost, 0).encode(), (host, int(port)))
+def get_port_and_rank(host, tr):
+    # Get index of host in tokenring
+    index = list(tr.keys()).index(host)
+    # Using index get port and rank
+    return list(tr.values())[index]
 
 def get_next_host_and_port(host, tr):
     # Get index of host in tokenring
@@ -128,42 +91,110 @@ def get_next_host_and_port(host, tr):
 def initiate_tokenring():
     baton = 0
     card_dealer = 0
-    host, port = get_host_and_port()
+    host = get_host()
     # Prepare tokenring
-    tr = prepare_tokenring("config.delta", host, port)
+    tr = get_tokenring("config.file")
+    # Prepare tokenring connections
+    port, rank = get_port_and_rank(host, tr)
+    tHost, tInfo = get_next_host_and_port(host, tr)
+    tPort = tInfo[0]
+    tRank = tInfo[1]
+
+    # if rank == gd
+    if rank == "gd":
+        baton = 1
+        card_dealer = 1
+
     # Get socket
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     # Bind address to socket
-    s.bind((host, port))
-    # Wait for tokenring to be ready
-    if is_first_in_tr(host, tr):
-        baton = 1
-        card_dealer = 1
-        while True:
-            start = input("Digite sim, quando todos estiverem conectados: ")
-            if start == "sim":
-                send_update_to_hosts("config.delta", s, host, port)
-                tr = update_tokenring("config.delta")
-                break
-    else:
-        while True:
-            data, addr = s.recvfrom(1024)
-            received_msg = data.decode('ascii')
-            msg_arr = received_msg.split("_")
-            if msg_arr[0] == "#":
-                if msg_arr[2] == "updatetr":
-                    tr = update_tokenring("config.delta")
-                    break
+    s.bind((host, int(tr[host][0])))
+    
     # Adjust tHost and tPort
-    tHost, tPort = get_next_host_and_port(host, tr)
-    return tHost, tPort, s, tr, baton, card_dealer
+    return tHost, tPort, tRank, host, port, rank, s, tr, baton, card_dealer
 
 def get_host_list(tokenring):
     host_list = []
-    for host in tokenring.keys():
+    # Get host from tokenring
+    for host in tokenring:
         host_list.append(host)
     return host_list
     
+def read_command(command):
+    if command[0] == "endreceive":
+        return "break"
+    elif command[1] == "receive":
+        # Fill player_cards with cards from command
+        num = len(command)
+        # Do a loop that gets number from command and append card to player_cards from cards
+        for i in range(2, num):
+            # Append card to player_cards
+            player_cards.append(int(command[i]))
+        return "receive"
+    
+def send_cards(tHost, tPort, host, s, tr, card_dealer, host_list):
+    if card_dealer == 1:
+        resp = "nao"
+        while resp != "sim":
+            resp = input("Digite sim para iniciar:")
+        # tamanho do tokenring
+        num_players = len(tr)
+        # embaralha o array
+        deck = generate_deck()
+        # distribui as cartas
+        player_hands = deal_cards(num_players, deck)
+
+        # Percorre host_list
+        for h in host_list:
+            msg = h
+            msg += ":receive"
+            # pop first player_hand
+            hand = player_hands.pop(0)
+            for card in hand:
+                # Append number
+                msg += ":" + str(card[1])
+            # Send message
+            s.sendto(create_message(msg, host, 1).encode('ascii'), (tHost, int(tPort)))
+
+            # Listen to message
+            data, addr = s.recvfrom(1024)
+            received_msg = data.decode('ascii')
+            exec, command, msg_arr = read_message(received_msg)
+            if(int(msg_arr[3]) != len(tr)):
+                print("Anel esta configurado errado!")
+                exit(1)
+            if(exec == True):
+                cmd = read_command(command)
+
+        msg = "endreceive"
+        packed = create_message(msg, host, 1).encode('ascii')
+        s.sendto(packed, (tHost, int(tPort)))
+        # Listen to message
+        data, addr = s.recvfrom(1024)
+        received_msg = data.decode('ascii')
+        exec, command, msg_arr = read_message(received_msg)
+        if(int(msg_arr[3]) != len(tr)):
+            print("Anel esta configurado errado!")
+            exit(1)
+        if(exec == True):
+            cmd = read_command(command)
+    else: # Se nao for card dealer
+        while True:
+            # Receive message
+            data, addr = s.recvfrom(1024)
+            msg = data.decode('ascii')
+            exec, command, msg_arr = read_message(msg)
+            if(exec == True):
+                cmd = read_command(command)
+                # envia mensagem
+                new_msg = create_message(msg_arr[2], msg_arr[1], int(msg_arr[3]) + 1)
+                s.sendto(new_msg.encode('ascii'), (tHost, int(tPort)))
+                if(cmd == "break"):
+                    break
+            else:
+                new_msg = create_message(msg_arr[2], msg_arr[1], int(msg_arr[3]) + 1)
+                # envia mensagem
+                s.sendto(new_msg.encode('ascii'), (tHost, int(tPort)))
 
 # Message protocol: MI / Origin / Message / Confirmation / ME
 # MI: Message Init
