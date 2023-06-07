@@ -9,6 +9,7 @@ def main():
     print(player_cards)
 
     # GAMELOOP HERE
-    
+    if baton == 1:
+        pass
 
 main()
