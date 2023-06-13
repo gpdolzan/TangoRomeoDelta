@@ -2,6 +2,7 @@ import socket
 import random
 from game_logic import *
 from game_logic import player_cards
+from game_logic import ultima_jogada, player_cards
 
 # Create a UDP socket DATAGRAM
 def get_socket():
@@ -65,10 +66,16 @@ def read_message(message):
     message_arr = message.split("_")
     # Get message and split with :
     command = message_arr[2].split(":")
+
     # If host is the same as target host
     if(command[0] == get_hostname()):
+        # HERE
+        #if(command[1] == "pass"):
+            #set_pass_count(get_pass_count() + 1)
         return True, command, message_arr
     elif(command[0] == "endreceive"):
+        return True, command, message_arr
+    elif(command[0] == "discarded"):
         return True, command, message_arr
     return False, command, message_arr
 
@@ -123,6 +130,16 @@ def get_host_list(tokenring):
 def read_command(command):
     if command[0] == "endreceive":
         return "break"
+    elif command[0] == "discarded":
+        # Clear ultima_jogada
+        ultima_jogada.clear()
+        # Fill discarded_cards with cards from command
+        num = len(command)
+        # Do a loop that gets number from command and append card to discarded_cards from cards
+        for i in range(1, num):
+            # Append card to ultima_jogada
+            ultima_jogada.append(int(command[i]))
+        return "discarded"
     elif command[1] == "receive":
         # Fill player_cards with cards from command
         num = len(command)
@@ -131,6 +148,9 @@ def read_command(command):
             # Append card to player_cards
             player_cards.append(int(command[i]))
         return "receive"
+    elif command[1] == "pass":
+        # I have the baton now
+        return "pass"
     
 def send_cards(tHost, tPort, host, s, tr, card_dealer, host_list):
     if card_dealer == 1:
@@ -173,9 +193,11 @@ def send_cards(tHost, tPort, host, s, tr, card_dealer, host_list):
         data, addr = s.recvfrom(1024)
         received_msg = data.decode('ascii')
         exec, command, msg_arr = read_message(received_msg)
+
         if(int(msg_arr[3]) != len(tr)):
             print("Anel esta configurado errado!")
             exit(1)
+            
         if(exec == True):
             cmd = read_command(command)
     else: # Se nao for card dealer
@@ -195,6 +217,54 @@ def send_cards(tHost, tPort, host, s, tr, card_dealer, host_list):
                 new_msg = create_message(msg_arr[2], msg_arr[1], int(msg_arr[3]) + 1)
                 # envia mensagem
                 s.sendto(new_msg.encode('ascii'), (tHost, int(tPort)))
+
+def receive_message(s):
+    data, addr = s.recvfrom(1024)
+    received_msg = data.decode('ascii')
+    exec, command, msg_arr = read_message(received_msg)
+    return exec,command,msg_arr
+
+def baton_process_msg(tr, exec, command, msg_arr, baton):
+    if(int(msg_arr[3]) != len(tr)):
+        print("Anel esta configurado errado!")
+        exit(1)
+    else:
+        if command[1] == "pass":
+            baton = 0
+    if(exec == True):
+        cmd = read_command(command)
+    return baton
+
+def prepare_discard(host, played):
+    msg = "discarded"
+    for card in played:
+        msg += ":" + str(card)
+                # Send message
+    msg = create_message(msg, host, 1)
+    return msg
+
+def prepare_pass(tHost, host):
+    msg = str(tHost) + ":pass"
+                # Send message
+    msg = create_message(msg, host, 1)
+    return msg
+
+def passagem_bastao(tHost, tPort, host, s, tr, baton):
+    msg = prepare_pass(tHost, host)
+    s.sendto(msg.encode('ascii'), (tHost, int(tPort)))
+    exec, command, msg_arr = receive_message(s)
+    baton = baton_process_msg(tr, exec, command, msg_arr, baton)
+
+def descartar(tHost, tPort, host, s, tr, baton, played):
+    msg = prepare_discard(host, played)
+    s.sendto(msg.encode('ascii'), (tHost, int(tPort)))
+    exec, command, msg_arr = receive_message(s)
+    baton = baton_process_msg(tr, exec, command, msg_arr, baton)
+    msg = prepare_pass(tHost, host)
+    s.sendto(msg.encode('ascii'), (tHost, int(tPort)))
+    exec, command, msg_arr = receive_message(s)
+    baton = baton_process_msg(tr, exec, command, msg_arr, baton)
+    return baton
 
 # Message protocol: MI / Origin / Message / Confirmation / ME
 # MI: Message Init
