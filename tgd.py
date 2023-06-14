@@ -567,7 +567,7 @@ def get_num_players():
     return num_players
 
 def generate_deck():
-    for i in range(1, 5):
+    for i in range(1, 13):
         for j in range(1, (i + 1)):
             deck.append(i)
     deck.append(13)
