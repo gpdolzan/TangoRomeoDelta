@@ -795,18 +795,22 @@ while True:
                 if value > 0 and value <= len(hand):
                     # Get cards from player
                     jogada = []
-                    for i in range(value):
-                        contador = 0
-                        while contador < (value - 1):
-                            cartinha = input("Digite o valor da carta: ")
-                            # verifica se cartinha eh um numero
-                            if cartinha.isdigit() is False:
-                                print("Valor invalido, por favor digite as cartas novamente")
+                    contador = 0
+                    while contador < value:
+                        str_cont = f"({contador} / {value}) "
+                        saida = str_cont + "Digite o valor da carta (se deseja zerar, digite Z): "
+                        cartinha = input(saida)
+                        # verifica se cartinha eh um numero
+                        if cartinha.isdigit() is False:
+                            if cartinha == "Z":
+                                print("Cartas foram zeradas")
                                 contador = 0
                                 jogada.clear()
                             else:
-                                contador += 1
-                                jogada.append(int(cartinha))
+                                print("Valor invalido, por favor verifique a carta digitada")
+                        else:
+                            contador += 1
+                            jogada.append(int(cartinha))
                     # sort cards
                     jogada.sort()
                     # Check if cards are valid
