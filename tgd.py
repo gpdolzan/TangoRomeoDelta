@@ -788,6 +788,7 @@ while True:
             if cycle_breaker() is True:
                 send_FIM()
                 break
+            value = "\n"
             value = input("Press Enter para passar a vez ou digite o valor da quantidade de cartas que deseja jogar: ")
             if len(value) > 0:
                 value = int(value)
@@ -795,7 +796,17 @@ while True:
                     # Get cards from player
                     jogada = []
                     for i in range(value):
-                        jogada.append(int(input("Digite o valor da carta: ")))
+                        contador = 0
+                        while contador < (value - 1):
+                            cartinha = input("Digite o valor da carta: ")
+                            # verifica se cartinha eh um numero
+                            if cartinha.isdigit() is False:
+                                print("Valor invalido, por favor digite as cartas novamente")
+                                contador = 0
+                                jogada.clear()
+                            else:
+                                contador += 1
+                                jogada.append(int(cartinha))
                     # sort cards
                     jogada.sort()
                     # Check if cards are valid
